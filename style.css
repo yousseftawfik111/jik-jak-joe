@@ -1,0 +1,40 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: #1d1d1d;
+  color: white;
+}
+
+.game-container {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.game-container,
+.main-cell {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+
+.main-cell {
+  border: 1px solid #ddd;
+}
+.sub-cell {
+  border: 1px solid #666;
+}
+
+.sub-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  font-weight: bold;
+  user-select: none;
+}
+
+.active-main-cell {
+  border: 5px solid rgb(0, 114, 163);
+}
