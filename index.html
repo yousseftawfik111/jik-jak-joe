@@ -4,16 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
-    <link rel="manifest" href="manifest.json" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="./icons/icon-192.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="./icons/icon-512.png"
+    />
     <meta name="theme-color" content="#1d1d1d" />
-    <link rel="apple-touch-icon" href="icon-192.png" />
     <title>Jik-Jak-Joe</title>
   </head>
   <body>
     <!-- Lobby Screen -->
     <div class="lobby" id="lobby">
       <h1>Jik-Jak-Joe</h1>
-      <p class="subtitle">Ultimate Tic-Tac-Toe</p>
 
       <div class="lobby-buttons">
         <button id="create-room-btn" class="btn btn-primary">
@@ -56,7 +65,9 @@
           <span id="turn-indicator"></span>
         </div>
         <div class="play-again-section">
-          <button id="play-again-btn" class="btn btn-small hidden">Play Again</button>
+          <button id="play-again-btn" class="btn btn-small hidden">
+            Play Again
+          </button>
           <span id="play-again-status"></span>
         </div>
         <div class="room-info">Room: <strong id="game-room-code"></strong></div>
@@ -64,11 +75,6 @@
       <div class="game-container"></div>
     </div>
 
-    <script type="module" src="script.js"></script>
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js");
-      }
-    </script>
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>

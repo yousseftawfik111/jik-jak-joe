@@ -1,6 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import {
-  getDatabase,
   ref,
   set,
   onValue,
@@ -8,43 +6,12 @@ import {
   onDisconnect,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
-import {
-  getAuth,
-  signInAnonymously,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-import firebaseConfig from "./firebase-config.js";
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
+import { initAuth, getUid, getDb } from "./auth.js";
 
 let currentRoomId = null;
-let currentPlayer = null; // "X" or "O"
-let currentUid = null;
+let currentPlayer = null;
 let gameStateCallback = null;
 let isHost = false;
-let authReady = false;
-
-const authReadyPromise = new Promise((resolve) => {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      currentUid = user.uid;
-      authReady = true;
-      resolve(user);
-    }
-  });
-});
-
-export async function initAuth() {
-  if (authReady && currentUid) {
-    return currentUid;
-  }
-  
-  await signInAnonymously(auth);
-  await authReadyPromise;
-  return currentUid;
-}
 
 function generateRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -73,7 +40,9 @@ export function isHostPlayer() {
 
 export async function createRoom() {
   await initAuth();
-  
+  const db = getDb();
+  const uid = getUid();
+
   const roomId = generateRoomCode();
   currentRoomId = roomId;
   currentPlayer = "X";
@@ -90,7 +59,7 @@ export async function createRoom() {
     currentTurn: "X",
     activeMainCell: null,
     players: {
-      X: { connected: true, uid: currentUid },
+      X: { connected: true, uid },
     },
     status: "waiting",
     winner: null,
@@ -108,7 +77,9 @@ export async function createRoom() {
 
 export async function joinRoom(roomId) {
   await initAuth();
-  
+  const db = getDb();
+  const uid = getUid();
+
   roomId = roomId.toUpperCase().trim();
   currentRoomId = roomId;
 
@@ -121,11 +92,13 @@ export async function joinRoom(roomId) {
         const data = snapshot.val();
 
         if (!data) {
+          currentRoomId = null;
           reject(new Error("Room not found"));
           return;
         }
 
         if (data.players?.O?.connected) {
+          currentRoomId = null;
           reject(new Error("Room is full"));
           return;
         }
@@ -134,14 +107,14 @@ export async function joinRoom(roomId) {
         isHost = false;
 
         const playerRef = ref(db, `rooms/${roomId}/players/O`);
-        await update(playerRef, { connected: true, uid: currentUid });
+        await update(playerRef, { connected: true, uid });
         onDisconnect(playerRef).update({ connected: false });
 
         await update(ref(db, `rooms/${roomId}`), { status: "playing" });
 
         resolve(roomId);
       },
-      { onlyOnce: true },
+      { onlyOnce: true }
     );
   });
 }
@@ -149,6 +122,7 @@ export async function joinRoom(roomId) {
 export function subscribeToGame(callback) {
   if (!currentRoomId) return;
 
+  const db = getDb();
   gameStateCallback = callback;
   const roomRef = ref(db, `rooms/${currentRoomId}`);
 
@@ -163,9 +137,9 @@ export function subscribeToGame(callback) {
 export async function makeMove(mainCellIndex, subCellIndex, symbol, nextActiveMainCell) {
   if (!currentRoomId || symbol !== currentPlayer) return false;
 
+  const db = getDb();
   const updates = {};
-  updates[`rooms/${currentRoomId}/board/${mainCellIndex}/${subCellIndex}`] =
-    symbol;
+  updates[`rooms/${currentRoomId}/board/${mainCellIndex}/${subCellIndex}`] = symbol;
   updates[`rooms/${currentRoomId}/currentTurn`] = symbol === "X" ? "O" : "X";
   updates[`rooms/${currentRoomId}/activeMainCell`] = nextActiveMainCell;
 
@@ -173,20 +147,10 @@ export async function makeMove(mainCellIndex, subCellIndex, symbol, nextActiveMa
   return true;
 }
 
-export async function updateGameState(partialState) {
-  if (!currentRoomId) return;
-
-  const updates = {};
-  for (const [key, value] of Object.entries(partialState)) {
-    updates[`rooms/${currentRoomId}/${key}`] = value;
-  }
-
-  await update(ref(db), updates);
-}
-
 export async function lockMainCell(mainCellIndex) {
   if (!currentRoomId) return;
 
+  const db = getDb();
   const roomRef = ref(db, `rooms/${currentRoomId}`);
 
   onValue(
@@ -199,13 +163,14 @@ export async function lockMainCell(mainCellIndex) {
         update(ref(db, `rooms/${currentRoomId}`), { lockedCells });
       }
     },
-    { onlyOnce: true },
+    { onlyOnce: true }
   );
 }
 
 export async function setMainCellWinner(mainCellIndex, winner) {
   if (!currentRoomId) return;
 
+  const db = getDb();
   const roomRef = ref(db, `rooms/${currentRoomId}`);
 
   onValue(
@@ -216,13 +181,14 @@ export async function setMainCellWinner(mainCellIndex, winner) {
       mainCellWinners[mainCellIndex] = winner;
       update(ref(db, `rooms/${currentRoomId}`), { mainCellWinners });
     },
-    { onlyOnce: true },
+    { onlyOnce: true }
   );
 }
 
 export async function setGameWinner(winner) {
   if (!currentRoomId) return;
 
+  const db = getDb();
   await update(ref(db, `rooms/${currentRoomId}`), {
     winner,
     status: "finished",
@@ -232,6 +198,7 @@ export async function setGameWinner(winner) {
 export async function votePlayAgain() {
   if (!currentRoomId || !currentPlayer) return;
 
+  const db = getDb();
   await update(ref(db, `rooms/${currentRoomId}/playAgainVotes`), {
     [currentPlayer]: true,
   });
@@ -240,6 +207,7 @@ export async function votePlayAgain() {
 export async function resetGame() {
   if (!currentRoomId) return;
 
+  const db = getDb();
   const freshState = {
     board: Array(9)
       .fill(null)
