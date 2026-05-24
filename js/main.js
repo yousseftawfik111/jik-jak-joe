@@ -11,11 +11,14 @@ import {
   setGameWinner,
   votePlayAgain,
   resetGame,
+  tryRejoinSession,
+  leaveRoom,
 } from "./multiplayer.js";
 import {
   getActiveMainCell,
   calculateMoveResult,
   checkGameWin,
+  checkGameTie,
   isValidMove,
 } from "./game-logic.js";
 import {
@@ -37,14 +40,33 @@ import {
 } from "./ui.js";
 
 let gameState = null;
-let hasShownWinAlert = false;
 
-initAuth().catch(console.error);
-
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initElements();
   setupEventListeners();
+  await checkExistingSession();
 });
+
+async function checkExistingSession() {
+  try {
+    const session = await tryRejoinSession();
+
+    if (session) {
+      updateRoomDisplay(session.roomId, session.playerSymbol);
+
+      if (session.gameState.status === "waiting") {
+        showScreen("waiting");
+      } else {
+        showScreen("game");
+        initializeBoard();
+      }
+
+      subscribeToGame(onGameStateUpdate);
+    }
+  } catch (error) {
+    console.error("Failed to rejoin session:", error);
+  }
+}
 
 function setupEventListeners() {
   const els = getElements();
@@ -53,6 +75,8 @@ function setupEventListeners() {
   els.joinRoomBtn.addEventListener("click", handleJoinRoom);
   els.playAgainBtn.addEventListener("click", handlePlayAgain);
   els.copyCodeBtn.addEventListener("click", handleCopyCode);
+  els.leaveRoomBtn.addEventListener("click", handleLeaveRoom);
+  els.leaveWaitingBtn.addEventListener("click", handleLeaveRoom);
 
   els.roomCodeInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
@@ -65,6 +89,12 @@ function setupEventListeners() {
   });
 
   els.gameContainer.addEventListener("click", handleCellClick);
+}
+
+async function handleLeaveRoom() {
+  await leaveRoom();
+  gameState = null;
+  showScreen("lobby");
 }
 
 async function handleCreateRoom() {
@@ -162,8 +192,21 @@ async function handleCellClick(event) {
     }
 
     await lockMainCell(mainIndex);
+
+    const updatedLockedCells = [...lockedCells, mainIndex];
+    if (checkGameTie(updatedLockedCells, updatedMainWinners)) {
+      await setGameWinner(null);
+      return;
+    }
   } else if (moveResult.willFillMainCell) {
     await lockMainCell(mainIndex);
+
+    const updatedLockedCells = [...lockedCells, mainIndex];
+    const currentMainWinners = gameState.mainCellWinners;
+    if (checkGameTie(updatedLockedCells, currentMainWinners)) {
+      await setGameWinner(null);
+      return;
+    }
   }
 }
 
@@ -177,20 +220,12 @@ function onGameStateUpdate(state) {
   }
 
   if (previousStatus === "finished" && state.status === "playing") {
-    hasShownWinAlert = false;
     initializeBoard();
-  }
-
-  if (state.status === "finished" && state.winner && !hasShownWinAlert) {
-    hasShownWinAlert = true;
-    const mySymbol = getPlayerSymbol();
-    const message = state.winner === mySymbol ? "You won!" : "You lost!";
-    setTimeout(() => alert(message), 100);
   }
 
   const mySymbol = getPlayerSymbol();
   renderBoard(state);
-  updateTurnIndicator(state.currentTurn, state.status, mySymbol);
+  updateTurnIndicator(state.currentTurn, state.status, mySymbol, state.winner);
   updatePlayAgainUI(state, mySymbol);
 
   const votes = state.playAgainVotes || { X: false, O: false };

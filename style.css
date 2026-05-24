@@ -231,6 +231,17 @@ body {
   color: #cf8f6f;
 }
 
+#turn-indicator.winner {
+  background-color: #2d5a2d;
+  color: #6fcf6f;
+  font-weight: bold;
+}
+
+#turn-indicator.loser {
+  background-color: #5a2d2d;
+  color: #cf6f6f;
+}
+
 .play-again-section {
   display: flex;
   align-items: center;
@@ -263,6 +274,8 @@ body {
 }
 
 .room-info {
+  display: flex;
+  align-items: center;
   color: #888;
   font-size: 0.9rem;
 }
@@ -325,6 +338,41 @@ body {
 
 .main-cell[data-player-won="O"]::after {
   color: #e85c5c;
+}
+
+/* Leave buttons */
+.btn-leave {
+  margin-top: 2rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  background-color: transparent;
+  color: #888;
+  border: 1px solid #444;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-leave:hover {
+  color: #e85c5c;
+  border-color: #e85c5c;
+}
+
+.btn-leave-small {
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  margin-left: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-leave-small:hover {
+  color: #e85c5c;
+  background-color: rgba(232, 92, 92, 0.1);
 }
 
 /* Responsive adjustments */
