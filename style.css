@@ -231,6 +231,17 @@ body {
   color: #cf8f6f;
 }
 
+#turn-indicator.winner {
+  background-color: #2d5a2d;
+  color: #6fcf6f;
+  font-weight: bold;
+}
+
+#turn-indicator.loser {
+  background-color: #5a2d2d;
+  color: #cf6f6f;
+}
+
 .play-again-section {
   display: flex;
   align-items: center;

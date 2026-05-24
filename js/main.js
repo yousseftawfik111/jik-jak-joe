@@ -18,6 +18,7 @@ import {
   getActiveMainCell,
   calculateMoveResult,
   checkGameWin,
+  checkGameTie,
   isValidMove,
 } from "./game-logic.js";
 import {
@@ -39,7 +40,6 @@ import {
 } from "./ui.js";
 
 let gameState = null;
-let hasShownWinAlert = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   initElements();
@@ -94,7 +94,6 @@ function setupEventListeners() {
 async function handleLeaveRoom() {
   await leaveRoom();
   gameState = null;
-  hasShownWinAlert = false;
   showScreen("lobby");
 }
 
@@ -193,8 +192,21 @@ async function handleCellClick(event) {
     }
 
     await lockMainCell(mainIndex);
+
+    const updatedLockedCells = [...lockedCells, mainIndex];
+    if (checkGameTie(updatedLockedCells, updatedMainWinners)) {
+      await setGameWinner(null);
+      return;
+    }
   } else if (moveResult.willFillMainCell) {
     await lockMainCell(mainIndex);
+
+    const updatedLockedCells = [...lockedCells, mainIndex];
+    const currentMainWinners = gameState.mainCellWinners;
+    if (checkGameTie(updatedLockedCells, currentMainWinners)) {
+      await setGameWinner(null);
+      return;
+    }
   }
 }
 
@@ -208,20 +220,12 @@ function onGameStateUpdate(state) {
   }
 
   if (previousStatus === "finished" && state.status === "playing") {
-    hasShownWinAlert = false;
     initializeBoard();
-  }
-
-  if (state.status === "finished" && state.winner && !hasShownWinAlert) {
-    hasShownWinAlert = true;
-    const mySymbol = getPlayerSymbol();
-    const message = state.winner === mySymbol ? "You won!" : "You lost!";
-    setTimeout(() => alert(message), 100);
   }
 
   const mySymbol = getPlayerSymbol();
   renderBoard(state);
-  updateTurnIndicator(state.currentTurn, state.status, mySymbol);
+  updateTurnIndicator(state.currentTurn, state.status, mySymbol, state.winner);
   updatePlayAgainUI(state, mySymbol);
 
   const votes = state.playAgainVotes || { X: false, O: false };

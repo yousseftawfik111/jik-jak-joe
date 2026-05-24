@@ -66,6 +66,17 @@ export function checkGameWin(mainCellWinners, symbol) {
   return checkWinPattern(mainCellWinData, symbol);
 }
 
+export function checkGameTie(lockedCells, mainCellWinners) {
+  if (lockedCells.length !== 9) {
+    return false;
+  }
+
+  const xWins = checkGameWin(mainCellWinners, "X");
+  const oWins = checkGameWin(mainCellWinners, "O");
+
+  return !xWins && !oWins;
+}
+
 export function isValidMove(gameState, mainIndex, subIndex, activeMainCell) {
   if (gameState.status !== "playing") {
     return false;

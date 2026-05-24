@@ -157,20 +157,27 @@ function updateActiveCell(state) {
   }
 }
 
-export function updateTurnIndicator(currentTurn, status, mySymbol) {
+export function updateTurnIndicator(currentTurn, status, mySymbol, winner) {
+  elements.turnIndicator.classList.remove("my-turn", "opponent-turn", "winner", "loser");
+
   if (status === "finished") {
-    elements.turnIndicator.textContent = "";
-    elements.turnIndicator.classList.remove("my-turn", "opponent-turn");
+    if (winner === mySymbol) {
+      elements.turnIndicator.textContent = "You won!";
+      elements.turnIndicator.classList.add("winner");
+    } else if (winner) {
+      elements.turnIndicator.textContent = "You lost";
+      elements.turnIndicator.classList.add("loser");
+    } else {
+      elements.turnIndicator.textContent = "Draw";
+    }
     return;
   }
 
   if (currentTurn === mySymbol) {
     elements.turnIndicator.textContent = "Your turn!";
     elements.turnIndicator.classList.add("my-turn");
-    elements.turnIndicator.classList.remove("opponent-turn");
   } else {
     elements.turnIndicator.textContent = "Opponent's turn";
-    elements.turnIndicator.classList.remove("my-turn");
     elements.turnIndicator.classList.add("opponent-turn");
   }
 }
