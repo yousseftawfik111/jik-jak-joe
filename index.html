@@ -55,6 +55,7 @@
         </button>
       </div>
       <p class="hint">Share this code with your friend</p>
+      <button id="leave-waiting-btn" class="btn btn-leave">Leave Room</button>
     </div>
 
     <!-- Game Screen -->
@@ -70,7 +71,10 @@
           </button>
           <span id="play-again-status"></span>
         </div>
-        <div class="room-info">Room: <strong id="game-room-code"></strong></div>
+        <div class="room-info">
+          <span>Room: <strong id="game-room-code"></strong></span>
+          <button id="leave-room-btn" class="btn-leave-small" title="Leave room">✕</button>
+        </div>
       </div>
       <div class="game-container"></div>
     </div>

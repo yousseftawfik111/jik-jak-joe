@@ -17,6 +17,8 @@ const elements = {
   gameRoomCode: null,
   playAgainBtn: null,
   playAgainStatus: null,
+  leaveRoomBtn: null,
+  leaveWaitingBtn: null,
 };
 
 let allMainCellElements = null;
@@ -38,6 +40,8 @@ export function initElements() {
   elements.gameRoomCode = document.getElementById("game-room-code");
   elements.playAgainBtn = document.getElementById("play-again-btn");
   elements.playAgainStatus = document.getElementById("play-again-status");
+  elements.leaveRoomBtn = document.getElementById("leave-room-btn");
+  elements.leaveWaitingBtn = document.getElementById("leave-waiting-btn");
 }
 
 export function getElements() {

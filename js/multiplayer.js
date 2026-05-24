@@ -1,17 +1,40 @@
 import {
   ref,
   set,
+  get,
   onValue,
+  off,
   update,
   onDisconnect,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 import { initAuth, getUid, getDb } from "./auth.js";
 
+const SESSION_KEY = "jikjakjoe_session";
+
 let currentRoomId = null;
 let currentPlayer = null;
 let gameStateCallback = null;
 let isHost = false;
+let gameSubscriptionRef = null;
+
+function saveSession(roomId, playerSymbol) {
+  localStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify({ roomId, playerSymbol })
+  );
+}
+
+function loadSession() {
+  const data = localStorage.getItem(SESSION_KEY);
+  return data ? JSON.parse(data) : null;
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+export { clearSession };
 
 function generateRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -72,6 +95,8 @@ export async function createRoom() {
   const playerRef = ref(db, `rooms/${roomId}/players/X`);
   onDisconnect(playerRef).update({ connected: false });
 
+  saveSession(roomId, "X");
+
   return roomId;
 }
 
@@ -112,6 +137,8 @@ export async function joinRoom(roomId) {
 
         await update(ref(db, `rooms/${roomId}`), { status: "playing" });
 
+        saveSession(roomId, "O");
+
         resolve(roomId);
       },
       { onlyOnce: true }
@@ -119,19 +146,78 @@ export async function joinRoom(roomId) {
   });
 }
 
+export async function tryRejoinSession() {
+  const session = loadSession();
+  if (!session) return null;
+
+  await initAuth();
+  const db = getDb();
+  const uid = getUid();
+
+  const roomRef = ref(db, `rooms/${session.roomId}`);
+  const snapshot = await get(roomRef);
+  const data = snapshot.val();
+
+  if (!data) {
+    clearSession();
+    return null;
+  }
+
+  const playerData = data.players?.[session.playerSymbol];
+  if (!playerData || playerData.uid !== uid) {
+    clearSession();
+    return null;
+  }
+
+  currentRoomId = session.roomId;
+  currentPlayer = session.playerSymbol;
+  isHost = session.playerSymbol === "X";
+
+  const playerRef = ref(db, `rooms/${session.roomId}/players/${session.playerSymbol}`);
+  await update(playerRef, { connected: true });
+  onDisconnect(playerRef).update({ connected: false });
+
+  return {
+    roomId: session.roomId,
+    playerSymbol: session.playerSymbol,
+    gameState: data,
+  };
+}
+
 export function subscribeToGame(callback) {
   if (!currentRoomId) return;
 
   const db = getDb();
   gameStateCallback = callback;
-  const roomRef = ref(db, `rooms/${currentRoomId}`);
+  gameSubscriptionRef = ref(db, `rooms/${currentRoomId}`);
 
-  onValue(roomRef, (snapshot) => {
+  onValue(gameSubscriptionRef, (snapshot) => {
     const data = snapshot.val();
     if (data && gameStateCallback) {
       gameStateCallback(data);
     }
   });
+}
+
+export async function leaveRoom() {
+  if (!currentRoomId || !currentPlayer) return;
+
+  const db = getDb();
+
+  if (gameSubscriptionRef) {
+    off(gameSubscriptionRef);
+    gameSubscriptionRef = null;
+  }
+
+  const playerRef = ref(db, `rooms/${currentRoomId}/players/${currentPlayer}`);
+  await update(playerRef, { connected: false });
+
+  clearSession();
+
+  currentRoomId = null;
+  currentPlayer = null;
+  gameStateCallback = null;
+  isHost = false;
 }
 
 export async function makeMove(mainCellIndex, subCellIndex, symbol, nextActiveMainCell) {

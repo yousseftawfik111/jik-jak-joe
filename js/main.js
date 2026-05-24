@@ -11,6 +11,8 @@ import {
   setGameWinner,
   votePlayAgain,
   resetGame,
+  tryRejoinSession,
+  leaveRoom,
 } from "./multiplayer.js";
 import {
   getActiveMainCell,
@@ -39,12 +41,32 @@ import {
 let gameState = null;
 let hasShownWinAlert = false;
 
-initAuth().catch(console.error);
-
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initElements();
   setupEventListeners();
+  await checkExistingSession();
 });
+
+async function checkExistingSession() {
+  try {
+    const session = await tryRejoinSession();
+
+    if (session) {
+      updateRoomDisplay(session.roomId, session.playerSymbol);
+
+      if (session.gameState.status === "waiting") {
+        showScreen("waiting");
+      } else {
+        showScreen("game");
+        initializeBoard();
+      }
+
+      subscribeToGame(onGameStateUpdate);
+    }
+  } catch (error) {
+    console.error("Failed to rejoin session:", error);
+  }
+}
 
 function setupEventListeners() {
   const els = getElements();
@@ -53,6 +75,8 @@ function setupEventListeners() {
   els.joinRoomBtn.addEventListener("click", handleJoinRoom);
   els.playAgainBtn.addEventListener("click", handlePlayAgain);
   els.copyCodeBtn.addEventListener("click", handleCopyCode);
+  els.leaveRoomBtn.addEventListener("click", handleLeaveRoom);
+  els.leaveWaitingBtn.addEventListener("click", handleLeaveRoom);
 
   els.roomCodeInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
@@ -65,6 +89,13 @@ function setupEventListeners() {
   });
 
   els.gameContainer.addEventListener("click", handleCellClick);
+}
+
+async function handleLeaveRoom() {
+  await leaveRoom();
+  gameState = null;
+  hasShownWinAlert = false;
+  showScreen("lobby");
 }
 
 async function handleCreateRoom() {
